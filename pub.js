@@ -1,5 +1,4 @@
-//const Milkcocoa = require('mlkcca-js');
-const Milkcocoa = require('/Users/syuhei/milkcocoa-v3/client/js/lib/node');
+const Milkcocoa = require('mlkcca-js');
 const settings = require('./settings');
 
 var topic = process.argv[2];
