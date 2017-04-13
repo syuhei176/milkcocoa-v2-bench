@@ -94,7 +94,6 @@ setInterval(function() {
 	let current = status.getSummary();
 	let result = diff(current);
 	console.log(current, result);
-	client.publish(settings.app.appId + '/'+prefix+'metrics/_p', JSON.stringify(result))
 	latest_status = current;
 }, 10000);
 
@@ -110,6 +109,7 @@ function diff(current) {
 				s_w: current[topic].sub[2],
 				s_e: current[topic].sub[3] - (latest_status[topic].sub[3]||0)
 			}
+			client.publish(settings.app.appId + '/metrics-'+prefix+topic+'/_p', JSON.stringify(result[topic]))
 		}
 	}
 	return result;
