@@ -1,4 +1,5 @@
-const Milkcocoa = require('mlkcca-js');
+//const Milkcocoa = require('mlkcca');
+const Milkcocoa = require('/Users/syuhei/milkcocoa-v3/client/js/lib/node');
 const settings = require('./settings');
 
 var topic = process.argv[2];
@@ -8,12 +9,12 @@ var recv_count = {}, recv_times = {};
 console.log("sub.js", topic, "start");
 
 setInterval(function() {
-	console.log('sub', recv_count)
+	//console.log('sub', recv_count)
 	try{
 	for(var key in recv_count) {
 		var avg = recv_times[key].reduce(function(acc, d) {return acc + d}, 0) / recv_times[key].length;
-		console.log(topic+'-'+key, "sub", recv_count[key], avg);
-		process.send({topic:topic+'-'+key, type:'sub', data:{recv_count:recv_count[key], avg:avg}});
+		//console.log(topic+'-'+key, "sub", recv_count[key], avg);
+		//process.send({topic:topic+'-'+key, type:'sub', data:{recv_count:recv_count[key], avg:avg}});
 		recv_count[key] = 0;
 		recv_times[key] = [];
 	}
@@ -36,7 +37,7 @@ function create_clients(milkcocoa, clients) {
 	create_client(milkcocoa, clients);
 	setTimeout(function() {
 		create_clients(milkcocoa, clients - 1);
-	}, 1000);
+	}, 200);
 }
 
 function create_client(milkcocoa, id) {
@@ -45,9 +46,9 @@ function create_client(milkcocoa, id) {
 	var pre_count = 0;
 	ds.on('push', function(e) {
         var start = e.value.ts;
-		var count = e.value.count;
-		//console.log(count - pre_count);
-		//console.log(e);
+		var count = e.value.c;
+		//console.log(count);
+		process.send({type:'sub', topic:topic + '-' + id, ts: start});
 		pre_count = count;
         var end = new Date().getTime();
         if(recv_times[id] === undefined) recv_times[id] = [];

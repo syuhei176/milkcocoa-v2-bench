@@ -3,10 +3,12 @@ const app = express();
 const child_process = require("child_process");
 const mqtt = require('mqtt');
 const settings = require('./settings');
+const status = require('./status');
 
 var workers = [];
 var last_pub_message = {};
 var last_sub_message = {};
+var latest_status = {};
 
 function create_mqtt_option() {
     return {
@@ -18,6 +20,7 @@ function create_mqtt_option() {
         reconnectPeriod: 7000
     }
 }
+
 var client = mqtt.connect(
     settings.url,
     create_mqtt_option()
@@ -26,8 +29,13 @@ var client = mqtt.connect(
 var prefix_str = process.argv[2] || 'local'
 var prefix = prefix_str + '-';
 
-create_workers(1, 'pub.js');
-create_workers(1, 'sub.js');
+var num_process = Number(process.argv[3] || '1');
+
+setTimeout(function() {
+	create_workers(num_process, 'pub.js');
+}, 5000);
+
+create_workers(num_process, 'sub.js');
 
 function create_workers(num, file) {
 
@@ -46,13 +54,11 @@ function create_worker(workerId, file) {
 	var worker = child_process.fork(__dirname + "/" + file, [prefix+ 'bench' + workerId]);
 	worker.on('message', function(message) {
 		if(message.type == 'pub') {
-			last_pub_message[message.topic] = message.data;
-			last_pub_message[message.topic].created = new Date().toLocaleString();
-			client.publish(settings.appId + '/metrics_pub_'+message.topic+'/_p', JSON.stringify(message.data))
+			status.pub(message.topic, message.ts);
+		}else if(message.type == 'ack') {
+			status.pub_ack(message.topic, message.ts);
 		}else if(message.type == 'sub') {
-			last_sub_message[message.topic] = message.data;
-			last_sub_message[message.topic].created = new Date().toLocaleString();
-			client.publish(settings.appId + '/metrics_sub_'+message.topic+'/_p', JSON.stringify(message.data))
+			status.sub(message.topic, message.ts);
 		}
 	});
 	worker.on('exit', function(e) {
@@ -73,13 +79,39 @@ function kill_all() {
 
 app.get('/', function(req, res) {
 	res.json({
-		last_pub_message: last_pub_message,
-		last_sub_message: last_sub_message
+		ts: new Date().getLocaleString(),
+		latest_status: latest_status
 	});
 });
 
-app.listen(3000);
+app.listen(3001);
 
 process.on('uncaughtException', (err) => {
 	console.error('uncaughtException', err);
 });
+
+setInterval(function() {
+	let current = status.getSummary();
+	let result = diff(current);
+	console.log(current, result);
+	client.publish(settings.app.appId + '/'+prefix+'metrics/_p', JSON.stringify(result))
+	latest_status = current;
+}, 10000);
+
+function diff(current) {
+	var result = {};
+	for(var topic in current) {
+		if(latest_status[topic]) {
+			result[topic] = {
+				ack_success: current[topic].ack[1],
+				ack_warn: current[topic].ack[2],
+				ack_alert: current[topic].ack[3] - (latest_status[topic].ack[3]||0),
+				sub_success: current[topic].sub[1],
+				sub_warn: current[topic].sub[2],
+				sub_alert: current[topic].sub[3] - (latest_status[topic].sub[3]||0)
+			}
+		}
+	}
+	return result;
+}
+

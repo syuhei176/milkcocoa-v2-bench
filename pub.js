@@ -1,4 +1,5 @@
-const Milkcocoa = require('mlkcca-js');
+//const Milkcocoa = require('mlkcca');
+const Milkcocoa = require('/Users/syuhei/milkcocoa-v3/client/js/lib/node');
 const settings = require('./settings');
 
 var topic = process.argv[2];
@@ -9,8 +10,8 @@ console.log("pub.js", topic, "start");
 
 setInterval(function() {
 	for(var key in pub_count) {
-		console.log(key, pub_count[key], puback_count[key], new Date().toLocaleString());
-		process.send({topic:key, type:'pub', data:{pub_count:pub_count[key], puback_count:puback_count[key]}});
+		//console.log(key, pub_count[key], puback_count[key], new Date().toLocaleString());
+		//process.send({topic:key, type:'pub', data:{pub_count:pub_count[key], puback_count:puback_count[key]}});
 		pub_count[key] = 0;
 		puback_count[key] = 0;
 	}
@@ -45,26 +46,29 @@ function create_client(id) {
 	var milkcocoa = new Milkcocoa(milkcocoaConfig);
 
 	setTimeout(function() {
-		publish_loop(milkcocoa, topic + '-' + id);
+		publish_loop(milkcocoa, topic + '-' + id, 0);
 	}, 1000);
 }
 
-function publish_loop(milkcocoa, topic) {
+function publish_loop(milkcocoa, topic, counter) {
 	setTimeout(function() {
-		publish(milkcocoa, topic, function() {
+		var ts = new Date().getTime();
+		publish(ts, milkcocoa, topic, counter, function() {
+			process.send({type:'ack', topic:topic, ts: ts});
 			if(puback_count[topic] === undefined) puback_count[topic] = 0;
 			puback_count[topic]++;
 		});
-		publish_loop(milkcocoa, topic);
+		publish_loop(milkcocoa, topic, counter + 1);
 	}, settings.span);
 }
 
-function publish(milkcocoa, topic, cb) {
-	var ts = new Date().getTime();
+function publish(ts, milkcocoa, topic, counter, cb) {
+	process.send({type:'pub', topic:topic, ts: ts});
+
 	if(pub_count[topic] === undefined) pub_count[topic] = 0;
 	pub_count[topic]++;
 
-	milkcocoa.dataStore(topic).push({ts:ts,data:make_data()}, cb);
+	milkcocoa.dataStore(topic).push({ts:ts,c:counter, data:make_data()}, cb);
 }
 
 function make_data() {
