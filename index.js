@@ -103,12 +103,12 @@ function diff(current) {
 	for(var topic in current) {
 		if(latest_status[topic]) {
 			result[topic] = {
-				ack_success: current[topic].ack[1],
-				ack_warn: current[topic].ack[2],
-				ack_alert: current[topic].ack[3] - (latest_status[topic].ack[3]||0),
-				sub_success: current[topic].sub[1],
-				sub_warn: current[topic].sub[2],
-				sub_alert: current[topic].sub[3] - (latest_status[topic].sub[3]||0)
+				a_s: current[topic].ack[1],
+				a_w: current[topic].ack[2],
+				a_e: current[topic].ack[3] - (latest_status[topic].ack[3]||0),
+				s_s: current[topic].sub[1],
+				s_w: current[topic].sub[2],
+				s_e: current[topic].sub[3] - (latest_status[topic].sub[3]||0)
 			}
 		}
 	}
